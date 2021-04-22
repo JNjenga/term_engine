@@ -42,43 +42,43 @@
 
 namespace te 
 {
-	struct Context
-	{
-		int w, h;
-		bool is_running;
-	};
+		struct Context
+		{
+				int w, h;
+				bool is_running;
+		};
 
-	////////////////////////////////////////
-	//
-	// USER SHOULD IMPLEMENT THESE FUNCTIONS
-	//
-	////////////////////////////////////////
-	void on_init();
-	void on_draw(std::stringstream & ss);
-	void on_input(const char c);
-	void on_terminate();
+		////////////////////////////////////////
+		//
+		// USER SHOULD IMPLEMENT THESE FUNCTIONS
+		//
+		////////////////////////////////////////
+		void on_init();
+		void on_draw(std::stringstream & ss);
+		void on_input(const char c);
+		void on_terminate();
 
-	////////////////////////////////////////
-	//
-	// LIBRARY FUNCTIONS
-	//
-	////////////////////////////////////////
-	void init(te::Context & c);
-	void draw();
-	void input();
-	void terminate();
+		////////////////////////////////////////
+		//
+		// LIBRARY FUNCTIONS
+		//
+		////////////////////////////////////////
+		void init(te::Context & c);
+		void draw();
+		void input();
+		void terminate();
 
-	////////////////////////////////////////
-	//
-	// PLATFORM DEP FUNCTIONS
-	//
-	////////////////////////////////////////
-	void enable_rawmode();
-	void disable_rawmode();
-	char get_key();
-	bool set_size(int w, int h);
-	void get_win_size(int & w, int & h);
-	void write_data(const char * data, int size);
+		////////////////////////////////////////
+		//
+		// PLATFORM DEP FUNCTIONS
+		//
+		////////////////////////////////////////
+		void enable_rawmode();
+		void disable_rawmode();
+		char get_key();
+		bool set_size(int w, int h);
+		void get_win_size(int & w, int & h);
+		void write_data(const char * data, int size);
 }
 
 #endif
@@ -98,144 +98,165 @@ DWORD dwOriginalOutMode = 0;
 
 void te::enable_rawmode()
 {
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	hIn = GetStdHandle(STD_INPUT_HANDLE);
-	GetConsoleMode(hOut, &dwOriginalOutMode);
+		hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		hIn = GetStdHandle(STD_INPUT_HANDLE);
+		GetConsoleMode(hOut, &dwOriginalOutMode);
 
-	GetConsoleMode(hIn, &dwOriginalInMode);
+		GetConsoleMode(hIn, &dwOriginalInMode);
 
-	DWORD dwModeOut = 0;
-	DWORD dwModeIn = 0;
-	dwModeOut = dwOriginalOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-	dwModeOut |= DISABLE_NEWLINE_AUTO_RETURN;
-	dwModeOut &= ~ENABLE_WRAP_AT_EOL_OUTPUT ;
-	dwModeIn = dwOriginalInMode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT); 
-	dwModeIn &= ~(ENABLE_PROCESSED_INPUT); 
+		DWORD dwModeOut = 0;
+		DWORD dwModeIn = 0;
+		dwModeOut = dwOriginalOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+		dwModeOut |= DISABLE_NEWLINE_AUTO_RETURN;
+		dwModeOut &= ~ENABLE_WRAP_AT_EOL_OUTPUT ;
+		dwModeIn = dwOriginalInMode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT); 
+		dwModeIn &= ~(ENABLE_PROCESSED_INPUT); 
 
-	SetConsoleMode(hOut, dwModeOut);
-	SetConsoleMode(hIn, dwModeIn);
+		SetConsoleMode(hOut, dwModeOut);
+		SetConsoleMode(hIn, dwModeIn);
 }
 
 void te::disable_rawmode()
 {
-	SetConsoleMode(hOut, dwOriginalOutMode);
-	SetConsoleMode(hIn, dwOriginalInMode);
+		SetConsoleMode(hOut, dwOriginalOutMode);
+		SetConsoleMode(hIn, dwOriginalInMode);
 }
 
 void te::write_data(const char * data, int size)
 {
-	WriteFile(hOut, data, size, NULL, NULL);
+		WriteFile(hOut, data, size, NULL, NULL);
 }
 
 char te::get_key()
 {
-	char c;
-	ReadFile(hIn, &c, 1, NULL, NULL);
-	return c;
+		char c;
+		ReadFile(hIn, &c, 1, NULL, NULL);
+		return c;
 }
 
 bool te::set_size(int w, int h)
 {
-	SMALL_RECT rect{0, 0, w, h};
-	auto ret = SetConsoleWindowInfo(hOut, TRUE, &rect);
+		SMALL_RECT rect{0, 0, w, h};
+		auto ret = SetConsoleWindowInfo(hOut, TRUE, &rect);
 
-	if(ret)
-	{
-		return true;
-	}
+		if(ret)
+		{
+				return true;
+		}
 		return false;
 }
 
 void te::get_win_size(int & w, int & h)
 {
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	auto ret = GetConsoleScreenBufferInfo(hOut, &csbi);
+		CONSOLE_SCREEN_BUFFER_INFO csbi;
+		auto ret = GetConsoleScreenBufferInfo(hOut, &csbi);
 
-	if(ret)
-	{
-		w = csbi.dwSize.X;
-		h = csbi.dwSize.Y;
-	}
+		if(ret)
+		{
+				w = csbi.dwSize.X;
+				h = csbi.dwSize.Y;
+		}
 
 }
 #else
+// UNIX systems
+#include <termios.h>
+#include <unistd.h>
+#include <iostream>
 
+termios orig;
 void te::enable_rawmode()
 {
+		if(tcgetattr(STDIN_FILENO, &orig) == -1)
+				exit(1);
+
+		termios mod = orig;
+		
+		mod.c_iflag &= (BRKINT);
+		mod.c_iflag &= ~(ICRNL);
+		mod.c_lflag &= ~(ECHO | ICANON);
+		mod.c_cc[VMIN] = 1;
+		mod.c_cc[VTIME] = 0;
+
+		tcsetattr(STDIN_FILENO, TCSAFLUSH, &mod);
 }
+
 void te::disable_rawmode()
 {
+		tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig);
 }
 
 void te::write_data(const char * data, int size)
 {
+		std::cout << data;
 }
 
 char te::get_key()
 {
-	char c = 0;
-	return c;
+		char c = 0;
+		std::cin >> c;
+		return c;
 }
 
 bool te::set_size(int w, int h)
 {
-	return false;
+		return false;
 }
 
 void te::get_win_size(int & w, int & h)
 {
 }
+
 #endif
 
 void te::init(te::Context & c)
 {
-	te::enable_rawmode();
-	// te::get_win_size(ctx.w, ctx.h);
+		te::enable_rawmode();
+		// te::get_win_size(ctx.w, ctx.h);
 
-	ctx.w = 100;
-	ctx.h = 100;
+		ctx.w = 100;
+		ctx.h = 100;
 
-	te::on_init();
+		te::on_init();
 }
 
 void te::draw()
 {
-	std::stringstream ss;
+		std::stringstream ss;
 
-	te::on_draw(ss);
-	
-	std::string str = ss.str();
-	te::write_data(str.c_str(), str.size());
+		te::on_draw(ss);
+
+		std::string str = ss.str();
+		te::write_data(str.c_str(), str.size());
 }
 
 void te::input()
 {
-	char c = te::get_key();
-	te::on_input(c);
+		char c = te::get_key();
+		te::on_input(c);
 }
 
 void te::terminate()
 {
-	te::on_terminate();
-	te::disable_rawmode();
+		te::on_terminate();
+		te::disable_rawmode();
 }
-
 
 int main()
 {
-	te::init(ctx);
+		te::init(ctx);
 
-	while(true)
-	{
-		te::draw();
-		te::input();
+		while(true)
+		{
+				te::draw();
+				te::input();
 
-		if(!ctx.is_running)
-			break;
-	}
+				if(!ctx.is_running)
+						break;
+		}
 
-	te::terminate();
-	return 0;
+		te::terminate();
+		return 0;
 }
 
 #endif
