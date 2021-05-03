@@ -1,27 +1,53 @@
 #define _TERM_ENGINE_IMPL
 #include "term_engine.h"
 
-extern te::Context ctx;
-
-void te::on_init()
+void on_init()
 {
-	ctx.is_running = true;
-	te::set_size(100, 12);
 }
 
-void te::on_draw(std::stringstream & s)
+void on_draw()
 {
+    std::stringstream s;
 	s << SQ_CLEAR << SQ_SET_POS(12, 12);
 	s << "Welcome to TE v0.0.1";
 	s << SQ_SET_POS(4,4) << FRED << "sadfasdf" << CRESET;
+
+    te::write_data(s);
+
 }
 
-void te::on_input(const char c)
+void on_input(te::Context & c)
 {
-	if(c == 'q')
-		ctx.is_running = false;
+    char k = te::get_key();
+	if(k == 'q')
+		c.is_running = false;
 }
 
-void te::on_terminate()
+void on_terminate()
 {
 }
+
+int main()
+{
+    te::Context ctx;
+    te::enable_rawmode();
+    // te::get_win_size(ctx.w, ctx.h);
+
+    ctx.w = 100;
+    ctx.h = 100;
+	ctx.is_running = true;
+	te::set_size(ctx,100, 12);
+
+    while(true)
+    {
+        on_draw();
+        on_input(ctx);
+
+        if(!ctx.is_running)
+            break;
+    }
+
+    te::disable_rawmode();
+    return 0;
+}
+
